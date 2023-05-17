@@ -1,0 +1,861 @@
+diff --git a/QSanguosha.pro b/QSanguosha.pro
+index db2eed3..25f2794 100644
+--- a/QSanguosha.pro
++++ b/QSanguosha.pro
+@@ -2,20 +2,20 @@
+ # Project created by QtCreator 2010-06-13T04:26:52
+ # -------------------------------------------------
+ TARGET = QSanguoshaO
+-QT += network sql declarative
++QT += widgets network sql qml quick quickwidgets# declarative
+ TEMPLATE = app
+ win32 : RC_FILE = resource/icono.rc
+ macx : ICON = resource/icon/sgs.icns
+-CONFIG += warn_on audio
++CONFIG += warn_on #audio
+ #CONFIG += rcc
+ #DEFINES += CLO_SOU
+ 
+ # If you want to enable joystick support, please uncomment the following line:
+-CONFIG += joystick
++#CONFIG += joystick
+ # However, joystick is not supported under Mac OS X temporarily
+ 
+ # If you want enable voice reading for chat content, uncomment the following line:
+-CONFIG += chatvoice
++#CONFIG += chatvoice
+ # Also, this function can only enabled under Windows system as it make use of Microsoft TTS
+ 
+ SOURCES += \
+@@ -25,7 +25,6 @@ SOURCES += \
+ 	src/client/clientplayer.cpp \
+ 	src/client/clientstruct.cpp \
+ 	src/core/banpair.cpp \
+-	src/core/crypto.cpp \
+ 	src/core/card.cpp \
+ 	src/core/engine.cpp \
+ 	src/core/exppattern.cpp \
+@@ -153,7 +152,6 @@ HEADERS += \
+ 	src/client/clientstruct.h \
+ 	src/core/audio.h \
+ 	src/core/banpair.h \
+-	src/core/crypto.h \
+ 	src/core/card.h \
+ 	src/core/engine.h \
+ 	src/core/exppattern.h \
+@@ -286,14 +284,18 @@ INCLUDEPATH += src/ui
+ INCLUDEPATH += src/util
+ INCLUDEPATH += src/lua
+ 
+-LIBS += -Llib -lcryptopp
++LIBS += -Llib
++CONFIG(audio | rcc){
++	LIBS += -lcryptopp
++}
+ LIBS += -L.
+ 
+ CONFIG(audio){
+ 	DEFINES += AUDIO_SUPPORT
+ 	INCLUDEPATH += include/fmod
+ 	LIBS += -lfmodex
+-	SOURCES += src/core/audio.cpp
++	SOURCES += src/core/audio.cpp src/core/crypto.cpp
++	HEADERS += src/core/crypto.h
+ }
+ 
+ CONFIG(joystick){
+@@ -315,6 +317,8 @@ CONFIG(rcc){
+         DEFINES += USE_RCC
+         TARGET = QSanguosha
+         win32: RC_FILE = resource/icon.rc
++	HEADERS += src/core/crypto.h
++	SOURCES += src/core/crypto.cpp
+ }
+ 
+ TRANSLATIONS += sanguosha.ts
+diff --git a/compile.sh b/compile.sh
+old mode 100644
+new mode 100755
+index b41f251..6016b72
+--- a/compile.sh
++++ b/compile.sh
+@@ -3,7 +3,7 @@
+ # This is a Shell script that ease our compilation work in Linux
+ # You should has Qt, swig, and plib installed before running this script
+ 
+-which -s qmake
++which -s qmake-qt5
+ if [[ $? != 0 ]]; then
+ 	echo "Qt is not installed or its tools are not in the PATH"
+ 	exit 1
+@@ -21,13 +21,14 @@ sh swig/swig.sh
+ 
+ # second, we create the Makefile from project file
+ echo "Generating Makefile using project file"
+-qmake QSanguosha.pro
++qmake-qt5 QSanguosha.pro
+ 
+ # then do make
+ echo "Compile it"
+-make
++make -j4 || exit 0
+ 
++echo "Compiling Translate!!!!!!!!!!!!"
+ # Compile the translation file
+-lrelease QSanguosha.pro
++lrelease-qt5 QSanguosha.pro
+ 
+ echo "Well, everything is OK. You can run it with ./QSanguosha"
+diff --git a/src/client/client.cpp b/src/client/client.cpp
+index fbf7fa4..6f0a549 100644
+--- a/src/client/client.cpp
++++ b/src/client/client.cpp
+@@ -177,7 +177,7 @@ void Client::signup(){
+         QString signup_str = QString("%1 %2:%3").arg(command).arg(base64).arg(Config.UserAvatar);
+         QString password = Config.Password;
+         if(!password.isEmpty()){
+-            password = QCryptographicHash::hash(password.toAscii(), QCryptographicHash::Md5).toHex();
++            password = QCryptographicHash::hash(password.toLatin1(), QCryptographicHash::Md5).toHex();
+             signup_str.append(":" + password);
+         }
+         request(signup_str);
+@@ -229,7 +229,7 @@ void Client::disconnectFromHost(){
+ typedef char buffer_t[1024];
+ 
+ void Client::processCommand(const QString &cmd){
+-    processReply(cmd.toAscii().data());
++    processReply(cmd.toLatin1().data());
+ }
+ 
+ void Client::processReply(char *reply){
+@@ -284,7 +284,7 @@ void Client::addPlayer(const QString &player_info){
+     QStringList texts = player_info.split(":");
+     QString name = texts.at(0);
+     QString base64 = texts.at(1);
+-    QByteArray data = QByteArray::fromBase64(base64.toAscii());
++    QByteArray data = QByteArray::fromBase64(base64.toLatin1());
+     QString screen_name = QString::fromUtf8(data);
+     QString avatar = texts.at(2);
+ 
+@@ -1557,7 +1557,7 @@ void Client::speak(const QString &speak_data){
+     QString who = words.at(0);
+     QString base64 = words.at(1);
+ 
+-    QByteArray data = QByteArray::fromBase64(base64.toAscii());
++    QByteArray data = QByteArray::fromBase64(base64.toLatin1());
+     QString text = QString::fromUtf8(data);
+     emit text_spoken(text);
+ 
+@@ -1635,7 +1635,7 @@ void Client::setScreenName(const QString &set_str){
+     QStringList words = set_str.split(":");
+     ClientPlayer *player = getPlayer(words.first());
+     QString base64 = words.at(1);
+-    QString screen_name = QString::fromUtf8(QByteArray::fromBase64(base64.toAscii()));
++    QString screen_name = QString::fromUtf8(QByteArray::fromBase64(base64.toLatin1()));
+     player->setScreenName(screen_name);
+ }
+ 
+diff --git a/src/client/clientstruct.cpp b/src/client/clientstruct.cpp
+index e6e5690..dac8a94 100644
+--- a/src/client/clientstruct.cpp
++++ b/src/client/clientstruct.cpp
+@@ -24,7 +24,7 @@ bool ServerInfoStruct::parse(const QString &str){
+     isPlay = !texts.isEmpty();
+ 
+     QString server_name = texts.at(1);
+-    Name = QString::fromUtf8(QByteArray::fromBase64(server_name.toAscii()));
++    Name = QString::fromUtf8(QByteArray::fromBase64(server_name.toLatin1()));
+ 
+     GameMode = texts.at(2);
+     OperationTimeout = texts.at(3).toInt();
+diff --git a/src/core/audio.cpp b/src/core/audio.cpp
+index ad73f00..0efff5f 100644
+--- a/src/core/audio.cpp
++++ b/src/core/audio.cpp
+@@ -19,7 +19,7 @@ public:
+         :sound(NULL), channel(NULL)
+     {
+         if(!filename.endsWith("dat"))
+-            FMOD_System_CreateSound(System, filename.toAscii(), FMOD_DEFAULT, NULL, &sound);
++            FMOD_System_CreateSound(System, filename.toLatin1(), FMOD_DEFAULT, NULL, &sound);
+         else{
+             Crypto cry;
+             sound = cry.initEncryptedFile(System, filename);
+diff --git a/src/core/card.h b/src/core/card.h
+index 2b4b42d..22c2fd8 100644
+--- a/src/core/card.h
++++ b/src/core/card.h
+@@ -4,7 +4,6 @@
+ #include <QObject>
+ #include <QMap>
+ #include <QIcon>
+-
+ class Room;
+ class Player;
+ class ServerPlayer;
+diff --git a/src/core/engine.cpp b/src/core/engine.cpp
+index 64aaf08..a9ffbc6 100644
+--- a/src/core/engine.cpp
++++ b/src/core/engine.cpp
+@@ -353,7 +353,7 @@ QColor Engine::getKingdomColor(const QString &kingdom) const{
+     static QMap<QString, QColor> color_map;
+     if(color_map.isEmpty()){
+         foreach(QString k, getKingdoms()){
+-            QString color_str = GetConfigFromLuaState(lua,  ("color_" + k).toAscii()).toString();
++            QString color_str = GetConfigFromLuaState(lua,  ("color_" + k).toLatin1()).toString();
+             QRegExp rx("#?([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})");
+             if(rx.exactMatch(color_str)){
+                 QStringList results = rx.capturedTexts();
+diff --git a/src/dialog/cardeditor.cpp b/src/dialog/cardeditor.cpp
+index 0b55a2c..b8c552d 100644
+--- a/src/dialog/cardeditor.cpp
++++ b/src/dialog/cardeditor.cpp
+@@ -489,7 +489,7 @@ CardScene::CardScene()
+ 
+     resetPhoto();
+ 
+-    QGraphicsItemGroup *magatama_group = new QGraphicsItemGroup(NULL, this);
++    QGraphicsItemGroup *magatama_group = new QGraphicsItemGroup();
+ 
+     int i;
+     for(i=0; i<10; i++){
+@@ -718,7 +718,7 @@ void CardScene::resetPhoto(){
+ }
+ 
+ void CardScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *event){
+-    QGraphicsItem *item = itemAt(event->scenePos());
++    QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
+     if(item){
+         if(item->parentItem() == skill_box){
+             QGraphicsScene::contextMenuEvent(event);
+diff --git a/src/dialog/configdialog.cpp b/src/dialog/configdialog.cpp
+index 9ef8e22..065910a 100644
+--- a/src/dialog/configdialog.cpp
++++ b/src/dialog/configdialog.cpp
+@@ -69,7 +69,7 @@ ConfigDialog::~ConfigDialog()
+ 
+ void ConfigDialog::on_browseBgButton_clicked()
+ {
+-    QString location = QDesktopServices::storageLocation(QDesktopServices::PicturesLocation);
++    QString location = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+     QString filename = QFileDialog::getOpenFileName(this,
+                                                     tr("Select a background image"),
+                                                     location,
+@@ -147,7 +147,7 @@ void ConfigDialog::saveConfig()
+ 
+ void ConfigDialog::on_browseBgMusicButton_clicked()
+ {
+-    QString location = QDesktopServices::storageLocation(QDesktopServices::MusicLocation);
++    QString location = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
+     QString filename = QFileDialog::getOpenFileName(this,
+                                                     tr("Select a background music"),
+                                                     location,
+diff --git a/src/dialog/generaloverview.h b/src/dialog/generaloverview.h
+index 4a34819..7f0a5cb 100644
+--- a/src/dialog/generaloverview.h
++++ b/src/dialog/generaloverview.h
+@@ -9,6 +9,7 @@ class QCommandLinkButton;
+ #include <QTableWidgetItem>
+ #include <QButtonGroup>
+ #include <QVBoxLayout>
++#include <QAction>
+ 
+ namespace Ui {
+     class GeneralOverview;
+diff --git a/src/dialog/mainwindow.cpp b/src/dialog/mainwindow.cpp
+index 3b3a8fd..a246c39 100644
+--- a/src/dialog/mainwindow.cpp
++++ b/src/dialog/mainwindow.cpp
+@@ -26,7 +26,8 @@
+ #include <QSystemTrayIcon>
+ #include <QInputDialog>
+ #include <QLabel>
+-
++#include <QQuickWidget>
++#include <QQuickItem>
+ #ifdef USE_RCC
+ #include <QResource>
+ #include "crypto.h"
+@@ -237,7 +238,7 @@ void MainWindow::startConnection(){
+ 
+ void MainWindow::on_actionReplay_triggered()
+ {
+-    QString location = QDesktopServices::storageLocation(QDesktopServices::HomeLocation);
++    QString location = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+     QString last_dir = Config.value("LastReplayDir").toString();
+     if(!last_dir.isEmpty())
+         location = last_dir;
+@@ -738,47 +739,42 @@ QGroupBox *MeleeDialog::createGeneralBox(){
+     return box;
+ }
+ 
+-class RoomItem: public Pixmap{
+-public:
+-    RoomItem(Room *room){
+-        changePixmap("image/system/frog/playing.png");
+-
+-        const qreal radius = 50;
+-        const qreal pi = 3.1415926;
++RoomItem::RoomItem(Room *room){
++    changePixmap("image/system/frog/playing.png");
+ 
+-        QList<const ServerPlayer *> players = room->findChildren<const ServerPlayer *>();
+-        int n = players.length();
+-        qreal angle = 2 * pi / n;
++    const qreal radius = 50;
++    const qreal pi = 3.1415926;
+ 
+-        foreach(const ServerPlayer *player, players){
+-            qreal theta = (player->getSeat() -1) * angle;
+-            qreal x = radius * cos(theta) + 5;
+-            qreal y = radius * sin(theta) + 5;
++    QList<const ServerPlayer *> players = room->findChildren<const ServerPlayer *>();
++    int n = players.length();
++    qreal angle = 2 * pi / n;
+ 
+-            qreal role_x = (radius + 30) * cos(theta) + 5;
+-            qreal role_y = (radius + 30) * sin(theta) + 5;
++    foreach(const ServerPlayer *player, players){
++        qreal theta = (player->getSeat() -1) * angle;
++        qreal x = radius * cos(theta) + 5;
++        qreal y = radius * sin(theta) + 5;
+ 
+-            QGraphicsPixmapItem *avatar = new QGraphicsPixmapItem(this);
+-            avatar->setPixmap(QPixmap(player->getGeneral()->getPixmapPath("tiny")));
+-            avatar->setPos(x, y);
++        qreal role_x = (radius + 30) * cos(theta) + 5;
++        qreal role_y = (radius + 30) * sin(theta) + 5;
+ 
+-            QGraphicsPixmapItem *role = new QGraphicsPixmapItem(this);
+-            role->setPixmap(QString("image/system/roles/small-%1.png").arg(player->getRole()));
+-            role->setPos(role_x, role_y);
+-        }
++        QGraphicsPixmapItem *avatar = new QGraphicsPixmapItem(this);
++        avatar->setPixmap(QPixmap(player->getGeneral()->getPixmapPath("tiny")));
++        avatar->setPos(x, y);
+ 
+-        setFlag(ItemIsMovable);
++        QGraphicsPixmapItem *role = new QGraphicsPixmapItem(this);
++        role->setPixmap(QString("image/system/roles/small-%1.png").arg(player->getRole()));
++        role->setPos(role_x, role_y);
+     }
+ 
+-    virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *){
+-        foreach(QGraphicsItem *item, childItems()){
+-            item->setVisible(! item->isVisible());
+-        }
++    setFlag(ItemIsMovable);
++}
++
++void RoomItem::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *){
++    foreach(QGraphicsItem *item, childItems()){
++        item->setVisible(! item->isVisible());
+     }
+-};
++}
+ 
+-typedef RoomItem *RoomItemStar;
+-Q_DECLARE_METATYPE(RoomItemStar);
+ 
+ void MeleeDialog::startTest(){
+     foreach(RoomItemStar room_item, room_items){
+@@ -922,7 +918,7 @@ void MeleeDialog::setGeneral(const QString &general_name){
+ AcknowledgementScene::AcknowledgementScene(QObject *parent) :
+     QGraphicsScene(parent)
+ {
+-    view = new QDeclarativeView;
++    view = new QQuickWidget;
+     view->setSource(QUrl::fromLocalFile("acknowledgement/main.qml"));
+     addWidget(view);
+     view->move( - width()/2, - height()/2);
+@@ -1055,9 +1051,11 @@ void MainWindow::on_actionAbout_Lua_triggered()
+ 
+     window->appear();
+ }
+-
++#ifdef AUDIO_SUPPORT
+ #include "crypto.h"
++#endif
+ void MainWindow::on_actionCrypto_audio_triggered(){
++#ifdef AUDIO_SUPPORT
+     QStringList filenames = QFileDialog::getOpenFileNames(
+             this, tr("Please select audio files"),
+             QString(),
+@@ -1080,4 +1078,5 @@ void MainWindow::on_actionCrypto_audio_triggered(){
+         foreach(QString filename, filenames)
+             QFile::remove(filename);
+     }
++#endif
+ }
+diff --git a/src/dialog/mainwindow.h b/src/dialog/mainwindow.h
+index d649585..14675b7 100644
+--- a/src/dialog/mainwindow.h
++++ b/src/dialog/mainwindow.h
+@@ -4,6 +4,7 @@
+ #include "engine.h"
+ #include "connectiondialog.h"
+ #include "configdialog.h"
++#include "pixmap.h"
+ 
+ #include <QMainWindow>
+ #include <QSettings>
+@@ -11,9 +12,9 @@
+ #include <QCheckBox>
+ #include <QSpinBox>
+ 
+-#include <QtDeclarative/QDeclarativeView>
+-#include <QtDeclarative/QDeclarativeContext>
+-
++#include <QQuickWidget>
++#include <QQmlContext>
++#include <QGraphicsScene>
+ namespace Ui {
+     class MainWindow;
+ }
+@@ -25,7 +26,17 @@ class Server;
+ class QTextEdit;
+ class QToolButton;
+ class QGroupBox;
+-class RoomItem;
++
++class RoomItem: public Pixmap{
++    Q_OBJECT
++public:
++    RoomItem(Room *room);
++
++    virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *);
++};
++
++typedef RoomItem *RoomItemStar;
++Q_DECLARE_METATYPE(RoomItemStar);
+ 
+ class BroadcastBox: public QDialog{
+     Q_OBJECT
+@@ -82,8 +93,8 @@ public:
+ signals:
+     void go_back();
+ private:
+-    QDeclarativeView *view;
+-    QDeclarativeContext *ctxt;
++    QQuickWidget *view;
++    QQmlContext *ctxt;
+     QList<QObject*> tokens,equipped,loaded;
+ };
+ 
+diff --git a/src/main.cpp b/src/main.cpp
+index 1027e3b..1154cca 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -1,4 +1,4 @@
+-#include <QtGui/QApplication>
++#include <QApplication>
+ 
+ #include <QCoreApplication>
+ #include <QTranslator>
+diff --git a/src/package/yitian.cpp b/src/package/yitian.cpp
+index 8e2d52b..5042884 100644
+--- a/src/package/yitian.cpp
++++ b/src/package/yitian.cpp
+@@ -1258,7 +1258,7 @@ public:
+     virtual const Card *viewAs(const QList<CardItem *> &cards) const{
+         if(Self->hasUsed("LexueCard")){
+             if(!Self->hasFlag("lexue"))
+-                return false;
++                return NULL;
+ 
+             if(cards.length() != 1)
+                 return NULL;
+diff --git a/src/scenario/fancheng-scenario.cpp b/src/scenario/fancheng-scenario.cpp
+index e4cca75..a2255c5 100644
+--- a/src/scenario/fancheng-scenario.cpp
++++ b/src/scenario/fancheng-scenario.cpp
+@@ -68,7 +68,7 @@ public:
+ 
+     virtual const Card *viewAs(const QList<CardItem *> &cards) const{
+         if(cards.length() != 2)
+-            return false;
++            return NULL;
+ 
+         DujiangCard *card = new DujiangCard;
+         card->addSubcards(cards);
+diff --git a/src/server/ai.cpp b/src/server/ai.cpp
+index 913df3e..7521278 100644
+--- a/src/server/ai.cpp
++++ b/src/server/ai.cpp
+@@ -406,9 +406,9 @@ QString LuaAI::askForUseCard(const QString &pattern, const QString &prompt){
+ 
+     lua_pushstring(L, __FUNCTION__);
+ 
+-    lua_pushstring(L, pattern.toAscii());
++    lua_pushstring(L, pattern.toLatin1());
+ 
+-    lua_pushstring(L, prompt.toAscii());
++    lua_pushstring(L, prompt.toLatin1());
+ 
+     int error = lua_pcall(L, 3, 1, 0);
+     const char *result = lua_tostring(L, -1);
+@@ -427,7 +427,7 @@ QList<int> LuaAI::askForDiscard(const QString &reason, int discard_num, bool opt
+     lua_State *L = room->getLuaState();
+ 
+     pushCallback(L, __FUNCTION__);
+-    lua_pushstring(L, reason.toAscii());
++    lua_pushstring(L, reason.toLatin1());
+     lua_pushinteger(L, discard_num);
+     lua_pushboolean(L, optional);
+     lua_pushboolean(L, include_equip);
+@@ -470,7 +470,7 @@ int LuaAI::askForAG(const QList<int> &card_ids, bool refusable, const QString &r
+     pushCallback(L, __FUNCTION__);
+     pushQIntList(L, card_ids);
+     lua_pushboolean(L, refusable);
+-    lua_pushstring(L, reason.toAscii());
++    lua_pushstring(L, reason.toLatin1());
+ 
+     int error = lua_pcall(L, 4, 1, 0);
+     if(error){
+diff --git a/src/server/ai.h b/src/server/ai.h
+index f2edb32..16d137f 100644
+--- a/src/server/ai.h
++++ b/src/server/ai.h
+@@ -1,5 +1,6 @@
+ #ifndef AI_H
+ #define AI_H
++#include "serverplayer.h"
+ 
+ class Room;
+ class ServerPlayer;
+diff --git a/src/server/contestdb.cpp b/src/server/contestdb.cpp
+index 7268120..8e5dab0 100644
+--- a/src/server/contestdb.cpp
++++ b/src/server/contestdb.cpp
+@@ -77,7 +77,7 @@ bool ContestDB::checkPassword(const QString &username, const QString &password){
+     if(members.contains(username)){
+         Member member = members.value(username);
+         QString salted = password + member.salt;
+-        QString digest = QCryptographicHash::hash(salted.toAscii(), QCryptographicHash::Md5).toHex();
++        QString digest = QCryptographicHash::hash(salted.toLatin1(), QCryptographicHash::Md5).toHex();
+         return digest == member.password;
+     }else
+         return false;
+@@ -208,7 +208,7 @@ void ContestDB::sendResult(Room *room){
+         return;
+     }
+ 
+-    lua_pushstring(L, start_time.toAscii());
++    lua_pushstring(L, start_time.toLatin1());
+ 
+     error = lua_pcall(L, 1, 1, 0);
+     if(error){
+diff --git a/src/server/room.cpp b/src/server/room.cpp
+index 0550a21..d19f3d8 100644
+--- a/src/server/room.cpp
++++ b/src/server/room.cpp
+@@ -3372,7 +3372,7 @@ void Room::makeCheat(const QString &cheat_str){
+     }else if(doscript_rx.exactMatch(cheat_str)){
+         QString script = doscript_rx.capturedTexts().value(1);
+         if(!script.isEmpty()){
+-            QByteArray data = QByteArray::fromBase64(script.toAscii());
++            QByteArray data = QByteArray::fromBase64(script.toLatin1());
+             data = qUncompress(data);
+             script = data;
+             doScript(script);
+@@ -3390,7 +3390,7 @@ void Room::makeDamage(const QStringList &texts){
+ 
+     damage.to = findChild<ServerPlayer *>(texts.at(2));
+ 
+-    char nature = texts.at(3).toAscii().at(0);
++    char nature = texts.at(3).toLatin1().at(0);
+     switch(nature){
+     case 'N': damage.nature = DamageStruct::Normal; break;
+     case 'T': damage.nature = DamageStruct::Thunder; break;
+diff --git a/src/server/roomthread.h b/src/server/roomthread.h
+index 58fa4bc..5979629 100644
+--- a/src/server/roomthread.h
++++ b/src/server/roomthread.h
+@@ -6,7 +6,7 @@
+ #include <QVariant>
+ 
+ #include <csetjmp>
+-
++#include "serverplayer.h"
+ #include "structs.h"
+ 
+ struct LogMessage{
+diff --git a/src/server/server.cpp b/src/server/server.cpp
+index 0c106d8..6a76318 100644
+--- a/src/server/server.cpp
++++ b/src/server/server.cpp
+@@ -20,7 +20,7 @@
+ #include <QLabel>
+ #include <QRadioButton>
+ #include <QApplication>
+-#include <QHttp>
++//#include <QHttp>
+ #include <QAction>
+ 
+ static QLayout *HLay(QWidget *left, QWidget *right){
+@@ -737,15 +737,15 @@ QLayout *ServerDialog::createButtonLayout(){
+ void ServerDialog::onDetectButtonClicked(){
+     QString host = "www.net.cn";
+     QString path = "/static/customercare/yourIP.asp";
+-    QHttp *http = new QHttp(this);
+-    http->setHost(host);
++    //QHttp *http = new QHttp(this);
++    //http->setHost(host);
+ 
+-    connect(http, SIGNAL(done(bool)), this, SLOT(onHttpDone(bool)));
+-    http->get(path);
++    //connect(http, SIGNAL(done(bool)), this, SLOT(onHttpDone(bool)));
++    //http->get(path);
+ }
+ 
+ void ServerDialog::onHttpDone(bool error){
+-    QHttp *http = qobject_cast<QHttp *>(sender());
++/*    QHttp *http = qobject_cast<QHttp *>(sender());
+ 
+     if(error){
+         QMessageBox::warning(this, tr("Warning"), http->errorString());
+@@ -759,6 +759,7 @@ void ServerDialog::onHttpDone(bool error){
+ 
+         http->deleteLater();
+     }
++*/
+ }
+ 
+ void ServerDialog::onOkButtonClicked(){
+@@ -1061,7 +1062,7 @@ void Server::processNewConnection(ClientSocket *socket){
+ }
+ 
+ static inline QString ConvertFromBase64(const QString &base64){
+-    QByteArray data = QByteArray::fromBase64(base64.toAscii());
++    QByteArray data = QByteArray::fromBase64(base64.toLatin1());
+     return QString::fromUtf8(data);
+ }
+ 
+diff --git a/src/ui/irregularbutton.cpp b/src/ui/irregularbutton.cpp
+index 95b73b8..58ad530 100644
+--- a/src/ui/irregularbutton.cpp
++++ b/src/ui/irregularbutton.cpp
+@@ -20,7 +20,7 @@ IrregularButton::IrregularButton(const QString &name)
+     QBitmap mask_bitmap(MakePath(name, "mask"));
+     mask = QRegion(mask_bitmap);
+ 
+-    setAcceptsHoverEvents(true);
++    setAcceptHoverEvents(true);
+     setAcceptedMouseButtons(Qt::LeftButton);
+ }
+ 
+diff --git a/src/ui/pixmapanimation.cpp b/src/ui/pixmapanimation.cpp
+index 4942971..51b3a9f 100644
+--- a/src/ui/pixmapanimation.cpp
++++ b/src/ui/pixmapanimation.cpp
+@@ -3,8 +3,7 @@
+ #include <QPixmapCache>
+ #include <QDir>
+ 
+-PixmapAnimation::PixmapAnimation(QGraphicsScene *scene) :
+-    QGraphicsItem(0,scene)
++PixmapAnimation::PixmapAnimation(QGraphicsScene *scene) 
+ {
+ }
+ 
+diff --git a/src/ui/roomscene.cpp b/src/ui/roomscene.cpp
+index 883450e..8291f15 100644
+--- a/src/ui/roomscene.cpp
++++ b/src/ui/roomscene.cpp
+@@ -1051,7 +1051,7 @@ void RoomScene::keyReleaseEvent(QKeyEvent *event){
+ void RoomScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *event){
+     QGraphicsScene::contextMenuEvent(event);
+ 
+-    QGraphicsItem *item = itemAt(event->scenePos());
++    QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
+     if(!item)
+         return;
+ 
+@@ -1588,7 +1588,7 @@ void RoomScene::removeWidgetFromSkillDock(QWidget *widget){
+ 
+ void RoomScene::acquireSkill(const ClientPlayer *player, const QString &skill_name){
+     QGraphicsObject *dest = getAnimationObject(player->objectName());
+-    QGraphicsTextItem *item = new QGraphicsTextItem(Sanguosha->translate(skill_name), NULL, this);
++    QGraphicsTextItem *item = new QGraphicsTextItem(Sanguosha->translate(skill_name), this->activePanel());
+     item->setFont(Config.BigFont);
+ 
+     QGraphicsDropShadowEffect *drop = new QGraphicsDropShadowEffect;
+@@ -2715,7 +2715,7 @@ void RoomScene::addRestartButton(QDialog *dialog){
+ }
+ 
+ void RoomScene::saveReplayRecord(){
+-    QString location = QDesktopServices::storageLocation(QDesktopServices::HomeLocation);
++    QString location = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+     QString filename = QFileDialog::getSaveFileName(main_window,
+                                                     tr("Save replay record"),
+                                                     location,
+@@ -2759,7 +2759,7 @@ void ScriptExecutor::doScript(){
+         return;
+ 
+     QString script = box->toPlainText();
+-    QByteArray data = script.toAscii();
++    QByteArray data = script.toLatin1();
+     data = qCompress(data);
+     script = data.toBase64();
+ 
+@@ -3397,7 +3397,7 @@ void RoomScene::onGameStart(){
+             memory->lock();
+ 
+             char *username = static_cast<char *>(memory->data());
+-            const char *my_username = Config.UserName.toAscii();
++            const char *my_username = Config.UserName.toLatin1();
+             play_music = qstrcmp(username, my_username) == 0;
+ 
+             memory->unlock();
+@@ -3405,7 +3405,7 @@ void RoomScene::onGameStart(){
+             memory->lock();
+ 
+             void *data = memory->data();
+-            const char *username = Config.UserName.toAscii();
++            const char *username = Config.UserName.toLatin1();
+             memcpy(data, username, qstrlen(username));
+ 
+             play_music = true;
+diff --git a/src/util/nativesocket.cpp b/src/util/nativesocket.cpp
+index 164a35f..f557a40 100644
+--- a/src/util/nativesocket.cpp
++++ b/src/util/nativesocket.cpp
+@@ -97,7 +97,7 @@ void NativeClientSocket::disconnectFromHost(){
+ }
+ 
+ void NativeClientSocket::send(const QString &message){
+-    socket->write(message.toAscii());
++    socket->write(message.toLatin1());
+     socket->write("\n");
+ }
+ 
+diff --git a/swig/ai.i b/swig/ai.i
+index ec81b5e..a9a660e 100644
+--- a/swig/ai.i
++++ b/swig/ai.i
+@@ -96,7 +96,7 @@ bool LuaAI::askForSkillInvoke(const QString &skill_name, const QVariant &data) {
+ 	lua_State *L = room->getLuaState();
+ 
+ 	pushCallback(L, __FUNCTION__);
+-	lua_pushstring(L, skill_name.toAscii());
++	lua_pushstring(L, skill_name.toLatin1());
+ 	SWIG_NewPointerObj(L, &data, SWIGTYPE_p_QVariant, 0);
+ 
+ 	int error = lua_pcall(L, 3, 1, 0);
+@@ -119,8 +119,8 @@ QString LuaAI::askForChoice(const QString &skill_name, const QString &choices, c
+ 
+ 	lua_State *L = room->getLuaState();
+ 	pushCallback(L, __FUNCTION__);
+-	lua_pushstring(L, skill_name.toAscii());
+-	lua_pushstring(L, choices.toAscii());
++	lua_pushstring(L, skill_name.toLatin1());
++	lua_pushstring(L, choices.toLatin1());
+ 	SWIG_NewPointerObj(L, &data, SWIGTYPE_p_QVariant, 0);
+ 	int error = lua_pcall(L, 4, 1, 0);
+ 	const char *result = lua_tostring(L, -1);
+@@ -239,8 +239,8 @@ const Card *LuaAI::askForCard(const QString &pattern, const QString &prompt, con
+ 	lua_State *L = room->getLuaState();
+ 
+ 	pushCallback(L, __FUNCTION__);
+-	lua_pushstring(L, pattern.toAscii());
+-	lua_pushstring(L, prompt.toAscii());
++	lua_pushstring(L, pattern.toLatin1());
++	lua_pushstring(L, prompt.toLatin1());
+ 	SWIG_NewPointerObj(L, &data, SWIGTYPE_p_QVariant, 0);
+ 
+ 	int error = lua_pcall(L, 4, 1, 0);
+@@ -262,8 +262,8 @@ int LuaAI::askForCardChosen(ServerPlayer *who, const QString &flags, const QStri
+ 
+ 	pushCallback(L, __FUNCTION__);
+ 	SWIG_NewPointerObj(L, who, SWIGTYPE_p_ServerPlayer, 0);
+-	lua_pushstring(L, flags.toAscii());
+-	lua_pushstring(L, reason.toAscii());
++	lua_pushstring(L, flags.toLatin1());
++	lua_pushstring(L, reason.toLatin1());
+ 
+ 	int error = lua_pcall(L, 4, 1, 0);
+ 	if(error){
+@@ -290,7 +290,7 @@ ServerPlayer *LuaAI::askForPlayerChosen(const QList<ServerPlayer *> &targets, co
+ 
+ 	pushCallback(L, __FUNCTION__);
+ 	SWIG_NewPointerObj(L, &targets, SWIGTYPE_p_QListT_ServerPlayer_p_t, 0);
+-	lua_pushstring(L, reason.toAscii());
++	lua_pushstring(L, reason.toLatin1());
+ 
+ 	int error = lua_pcall(L, 3, 1, 0);
+ 	if(error){
+@@ -343,7 +343,7 @@ const Card *LuaAI::askForCardShow(ServerPlayer *requestor, const QString &reason
+ 
+ 	pushCallback(L, __FUNCTION__);
+ 	SWIG_NewPointerObj(L, requestor, SWIGTYPE_p_ServerPlayer, 0);
+-	lua_pushstring(L, reason.toAscii());
++	lua_pushstring(L, reason.toLatin1());
+ 
+ 	int error = lua_pcall(L, 3, 1, 0);
+ 	if(error){
+@@ -389,7 +389,7 @@ const Card *LuaAI::askForPindian(ServerPlayer *requestor, const QString &reason)
+ 
+ 	pushCallback(L, __FUNCTION__);
+ 	SWIG_NewPointerObj(L, requestor, SWIGTYPE_p_ServerPlayer, 0);
+-	lua_pushstring(L, reason.toAscii());
++	lua_pushstring(L, reason.toLatin1());
+ 
+ 	int error = lua_pcall(L, 3, 1, 0);
+ 	if(error){
+@@ -413,7 +413,7 @@ Card::Suit LuaAI::askForSuit(const QString &reason){
+ 	lua_State *L = room->getLuaState();
+ 
+ 	pushCallback(L, __FUNCTION__);
+-	lua_pushstring(L, reason.toAscii());
++	lua_pushstring(L, reason.toLatin1());
+ 	int error = lua_pcall(L, 2, 1, 0);
+ 	if(error){
+ 		const char *error_msg = lua_tostring(L, -1);
+diff --git a/swig/luaskills.i b/swig/luaskills.i
+index 3a64eba..cf2dcca 100644
+--- a/swig/luaskills.i
++++ b/swig/luaskills.i
+@@ -404,7 +404,7 @@ bool LuaFilterSkill::viewFilter(const CardItem *to_select) const{
+ 
+ const Card *LuaFilterSkill::viewAs(CardItem *card_item) const{
+ 	if(view_as == 0)
+-		return false;
++		return NULL;
+ 
+ 	lua_State *L = Sanguosha->getLuaState();
+ 
+@@ -540,7 +540,7 @@ bool LuaViewAsSkill::isEnabledAtResponse(const Player *player, const QString &pa
+ 
+ 	SWIG_NewPointerObj(L, player, SWIGTYPE_p_Player, 0);
+ 
+-	lua_pushstring(L, pattern.toAscii());
++	lua_pushstring(L, pattern.toLatin1());
+ 
+ 	int error = lua_pcall(L, 3, 1, 0);
+ 	if(error){
+diff --git a/swig/native.i b/swig/native.i
+index d0e64e4..601c4ea 100644
+--- a/swig/native.i
++++ b/swig/native.i
+@@ -24,7 +24,7 @@ static int GetFileNames(lua_State *lua){
+ 
+ 	int i;
+ 	for(i=0; i<filenames.length(); i++){
+-		lua_pushstring(lua, filenames.at(i).toAscii());
++		lua_pushstring(lua, filenames.at(i).toLatin1());
+ 		lua_rawseti(lua, -2, i+1);
+ 	}
+ 
+diff --git a/swig/sanguosha.i b/swig/sanguosha.i
+index c3459f8..67f43e6 100644
+--- a/swig/sanguosha.i
++++ b/swig/sanguosha.i
+@@ -996,7 +996,7 @@ void Room::doScript(const QString &script){
+ 	SWIG_NewPointerObj(L, current, SWIGTYPE_p_ServerPlayer, 0);
+ 	lua_setglobal(L, "P");
+ 
+-	luaL_dostring(L, script.toAscii());
++	luaL_dostring(L, script.toLatin1());
+ }
+ 
+ %}

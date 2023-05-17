@@ -1,0 +1,872 @@
+diff --git a/QSanguosha.pro b/QSanguosha.pro
+index a69f7c6..4114058 100644
+--- a/QSanguosha.pro
++++ b/QSanguosha.pro
+@@ -3,11 +3,15 @@
+ # -------------------------------------------------
+ TARGET = QSanguosha
+ QT += network widgets
+-!winrt: QT += declarative
++!winrt: QT += qml 
++#declarative
+ TEMPLATE = app
+ 
+ CONFIG += lua
+ 
++CONFIG += audio_qt
++QT += multimedia
++
+ CONFIG -= flat
+ 
+ CONFIG += precompile_header
+@@ -359,15 +363,24 @@ linux{
+         DEFINES += LINUX
+         !contains(QMAKE_HOST.arch, x86_64) {
+             LIBS += -L"$$_PRO_FILE_PWD_/lib/linux/x86"
++            QMAKE_CXXFLAGS += -ggdb
+             QMAKE_LFLAGS += -Wl,--rpath=lib/linux/x86
+         }
+         else {
+             LIBS += -L"$$_PRO_FILE_PWD_/lib/linux/x64"
++            QMAKE_CXXFLAGS += -ggdb
+             QMAKE_LFLAGS += -Wl,--rpath=lib/linux/x64
+         }
+     }
+ }
+ 
++CONFIG(audio_qt) {
++    DEFINES += AUDIO_SUPPORT
++    SOURCES += src/core/audio_qt.cpp
++}
++
++
++
+ CONFIG(audio){
+     DEFINES += AUDIO_SUPPORT
+     INCLUDEPATH += include/fmod
+@@ -449,7 +462,7 @@ android:DEFINES += "\"getlocaledecpoint()='.'\""
+ 
+ 
+ !build_pass{
+-    system("lrelease $$_PRO_FILE_PWD_/builds/sanguosha.ts -qm $$_PRO_FILE_PWD_/sanguosha.qm")
++    system("lrelease-qt5 $$_PRO_FILE_PWD_/builds/sanguosha.ts -qm $$_PRO_FILE_PWD_/sanguosha.qm")
+ 
+     SWIG_bin = "swig"
+     contains(QMAKE_HOST.os, "Windows"): SWIG_bin = "$$_PRO_FILE_PWD_/tools/swig/swig.exe"
+diff --git a/builds/sanguosha.ts b/builds/sanguosha.ts
+index e25406c..03a225f 100644
+--- a/builds/sanguosha.ts
++++ b/builds/sanguosha.ts
+@@ -96,102 +96,102 @@
+ <context>
+     <name>BossModeCustomAssignDialog</name>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1126"/>
++        <location filename="../src/server/server.cpp" line="1129"/>
+         <source>Custom boss mode</source>
+         <translation>自定义闯关模式</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1129"/>
++        <location filename="../src/server/server.cpp" line="1132"/>
+         <source>Difficulty options</source>
+         <translation>难度设置</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1137"/>
++        <location filename="../src/server/server.cpp" line="1140"/>
+         <source>BMD Revive</source>
+         <translation>复活联军</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1138"/>
++        <location filename="../src/server/server.cpp" line="1141"/>
+         <source>Tootip of BMD Revive</source>
+         <translation>一关结束时，复活已阵亡的联军，体力至多为4（体力上限为0则不能复活）。</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1141"/>
++        <location filename="../src/server/server.cpp" line="1144"/>
+         <source>BMD Recover</source>
+         <translation>回复体力</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1142"/>
++        <location filename="../src/server/server.cpp" line="1145"/>
+         <source>Tootip of BMD Recover</source>
+         <translation>一关结束时，联合军将体力回复至体力上限。</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1147"/>
++        <location filename="../src/server/server.cpp" line="1150"/>
+         <source>BMD Draw</source>
+         <translation>补充手牌</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1148"/>
++        <location filename="../src/server/server.cpp" line="1151"/>
+         <source>Tootip of BMD Draw</source>
+         <translation>一关结束时，联合军将手牌补至4张。</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1151"/>
++        <location filename="../src/server/server.cpp" line="1154"/>
+         <source>BMD Reward</source>
+         <translation>摸奖励牌</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1152"/>
++        <location filename="../src/server/server.cpp" line="1155"/>
+         <source>Tootip of BMD Reward</source>
+         <translation>一关结束时，联合军每名角色摸2张牌。</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1157"/>
++        <location filename="../src/server/server.cpp" line="1160"/>
+         <source>BMD Inc Max HP</source>
+         <translation>增强联军</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1158"/>
++        <location filename="../src/server/server.cpp" line="1161"/>
+         <source>Tootip of BMD Inc Max HP</source>
+         <translation>联军每名角色体力上限+2。</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1161"/>
++        <location filename="../src/server/server.cpp" line="1164"/>
+         <source>BMD Dec Max HP</source>
+         <translation>削弱Boss</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1162"/>
++        <location filename="../src/server/server.cpp" line="1165"/>
+         <source>Tootip of BMD Dec Max HP</source>
+         <translation>第二关Boss体力上限-2，第三关-4，其后均-5。</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1170"/>
++        <location filename="../src/server/server.cpp" line="1173"/>
+         <source>Boss Mode Experience Mode</source>
+         <translation>经验值系统</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1173"/>
++        <location filename="../src/server/server.cpp" line="1176"/>
+         <source>Boss Mode Optional Boss</source>
+         <translation>自选Boss</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1176"/>
++        <location filename="../src/server/server.cpp" line="1179"/>
+         <source>Boss Mode Endless</source>
+         <translation>无尽模式</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1179"/>
++        <location filename="../src/server/server.cpp" line="1182"/>
+         <source>Boss Mode Turn Limitation</source>
+         <translation>回合数限制</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1191"/>
++        <location filename="../src/server/server.cpp" line="1194"/>
+         <source>OK</source>
+         <translation>确定</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1192"/>
++        <location filename="../src/server/server.cpp" line="1195"/>
+         <source>Cancel</source>
+         <translation>取消</translation>
+     </message>
+@@ -769,84 +769,84 @@
+         <translation>请选择用于交换的 %1 张手牌</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1325"/>
++        <location filename="../src/client/client.cpp" line="1326"/>
+         <source>Game is over now</source>
+         <translation>游戏已经结束</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1327"/>
++        <location filename="../src/client/client.cpp" line="1328"/>
+         <source>Invalid signup string</source>
+         <translation>无效的登录字符串</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1329"/>
++        <location filename="../src/client/client.cpp" line="1330"/>
+         <source>Your level is not enough</source>
+         <translation>你的等级不够</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1331"/>
++        <location filename="../src/client/client.cpp" line="1332"/>
+         <source>Unknown warning: %1</source>
+         <translation>未知警告: %1</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1526"/>
++        <location filename="../src/client/client.cpp" line="1527"/>
+         <source>You are dying, please provide %1 peach(es)(or analeptic) to save yourself</source>
+         <translation>你处于濒死状态，请提供 %1 个【桃】（或【酒】）来自救</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1530"/>
++        <location filename="../src/client/client.cpp" line="1531"/>
+         <source>%1 is dying, please provide %2 peach(es) to save him</source>
+         <translation>%1 处于濒死状态，请提供 %2 个【桃】来挽救该角色</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1562"/>
++        <location filename="../src/client/client.cpp" line="1563"/>
+         <source>%1 request you to show one hand card</source>
+         <translation>%1 要求你展示一张手牌</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1696"/>
++        <location filename="../src/client/client.cpp" line="1697"/>
+         <source>Please play a card for pindian</source>
+         <translation>请出一张卡牌用于拼点</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1699"/>
++        <location filename="../src/client/client.cpp" line="1700"/>
+         <source>%1 ask for you to play a card to pindian</source>
+         <translation>%1 要求你出一张卡牌用于拼点</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1724"/>
++        <location filename="../src/client/client.cpp" line="1725"/>
+         <source>Please distribute %1 cards %2 as you wish</source>
+         <translation>请将 %1 张牌任意分配给任意数量的%2角色</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1726"/>
++        <location filename="../src/client/client.cpp" line="1727"/>
+         <source>to another player</source>
+         <translation>其他</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1763"/>
+-        <location filename="../src/client/client.cpp" line="1767"/>
++        <location filename="../src/client/client.cpp" line="1764"/>
++        <location filename="../src/client/client.cpp" line="1768"/>
+         <source>&lt;br/&gt; &lt;b&gt;Source&lt;/b&gt;: %1&lt;br/&gt;</source>
+         <translation>&lt;br/&gt; &lt;b&gt;技能来源&lt;/b&gt;: %1&lt;br/&gt;</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1765"/>
++        <location filename="../src/client/client.cpp" line="1766"/>
+         <source>Please choose a player</source>
+         <translation>请选择一名角色</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1837"/>
++        <location filename="../src/client/client.cpp" line="1838"/>
+         <source>&lt;font color=&apos;red&apos;&gt;System: %1&lt;/font&gt;</source>
+         <translation>&lt;font color=&apos;red&apos;&gt;系统: %1&lt;/font&gt;</translation>
+     </message>
+     <message>
+-        <location filename="../src/client/client.cpp" line="1854"/>
++        <location filename="../src/client/client.cpp" line="1855"/>
+         <source>&lt;font color=&apos;%1&apos;&gt;[%2] said: %3 &lt;/font&gt;</source>
+         <translation>&lt;font color=&apos;%1&apos;&gt;[%2] 说: %3 &lt;/font&gt;</translation>
+     </message>
+     <message>
+         <location filename="../src/client/client.cpp" line="274"/>
+-        <location filename="../src/client/client.cpp" line="1334"/>
++        <location filename="../src/client/client.cpp" line="1335"/>
+         <source>Warning</source>
+         <translation>警告</translation>
+     </message>
+@@ -1624,42 +1624,42 @@
+         <translation>托管中 ...</translation>
+     </message>
+     <message>
+-        <location filename="../src/ui/dashboard.cpp" line="917"/>
++        <location filename="../src/ui/dashboard.cpp" line="942"/>
+         <source>Sort handcards</source>
+         <translation>整理手牌</translation>
+     </message>
+     <message>
+-        <location filename="../src/ui/dashboard.cpp" line="919"/>
++        <location filename="../src/ui/dashboard.cpp" line="944"/>
+         <source>Sort by type</source>
+         <translation>按类型排序</translation>
+     </message>
+     <message>
+-        <location filename="../src/ui/dashboard.cpp" line="922"/>
++        <location filename="../src/ui/dashboard.cpp" line="947"/>
+         <source>Sort by suit</source>
+         <translation>按花色排序</translation>
+     </message>
+     <message>
+-        <location filename="../src/ui/dashboard.cpp" line="925"/>
++        <location filename="../src/ui/dashboard.cpp" line="950"/>
+         <source>Sort by number</source>
+         <translation>按点数排序</translation>
+     </message>
+     <message>
+-        <location filename="../src/ui/dashboard.cpp" line="991"/>
++        <location filename="../src/ui/dashboard.cpp" line="1016"/>
+         <source>Shefu</source>
+         <translation>设伏</translation>
+     </message>
+     <message>
+-        <location filename="../src/ui/dashboard.cpp" line="1006"/>
++        <location filename="../src/ui/dashboard.cpp" line="1031"/>
+         <source>Shefu Ask All</source>
+         <translation>所有牌均询问</translation>
+     </message>
+     <message>
+-        <location filename="../src/ui/dashboard.cpp" line="1011"/>
++        <location filename="../src/ui/dashboard.cpp" line="1036"/>
+         <source>Shefu Ask Necessary</source>
+         <translation>只询问被记录的牌</translation>
+     </message>
+     <message>
+-        <location filename="../src/ui/dashboard.cpp" line="1016"/>
++        <location filename="../src/ui/dashboard.cpp" line="1041"/>
+         <source>Shefu Ask None</source>
+         <translation>所有牌均不询问</translation>
+     </message>
+@@ -2837,7 +2837,7 @@
+     <message>
+         <location filename="../src/dialog/mainwindow.cpp" line="448"/>
+         <source>Disciples dressed in blue, my heart worries for you. You are the cause, of this song without pause &lt;br/&gt;&quot;A Short Song&quot; by Cao Cao</source>
+-        <translation>青青子衿　悠悠我心　但为君故　沉吟至今&lt;br/&gt;曹操 《短歌行》</translation>
++        <translation>青青子衿&#x3000;悠悠我心&#x3000;但为君故&#x3000;沉吟至今&lt;br/&gt;曹操 《短歌行》</translation>
+     </message>
+     <message>
+         <location filename="../src/dialog/mainwindow.cpp" line="457"/>
+@@ -3384,59 +3384,59 @@
+ <context>
+     <name>Room</name>
+     <message>
+-        <location filename="../src/server/room.cpp" line="2260"/>
++        <location filename="../src/server/room.cpp" line="2262"/>
+         <source>disconnected</source>
+         <translation>断开</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="2506"/>
++        <location filename="../src/server/room.cpp" line="2508"/>
+         <source>Computer %1</source>
+         <translation>电脑 %1</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="2283"/>
++        <location filename="../src/server/room.cpp" line="2285"/>
+         <source>&lt;font color=#000000&gt;Player &lt;b&gt;%1&lt;/b&gt; left the game&lt;/font&gt;</source>
+         <translation>&lt;font color=#000000&gt;玩家 %1 离开了游戏&lt;/font&gt;</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="2511"/>
++        <location filename="../src/server/room.cpp" line="2513"/>
+         <source>Hello, I&apos;m a robot</source>
+         <translation>大家好，我是一个机器人</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="2554"/>
++        <location filename="../src/server/room.cpp" line="2556"/>
+         <source>&lt;font color=#EEB422&gt;Player &lt;b&gt;%1&lt;/b&gt; joined the game&lt;/font&gt;</source>
+         <translation>&lt;font color=#EEB422&gt;玩家 &lt;b&gt;%1&lt;/b&gt; 加入了游戏&lt;/font&gt;</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="3246"/>
++        <location filename="../src/server/room.cpp" line="3248"/>
+         <source>Unable to parse player</source>
+         <translation>不可分析的玩家</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="3248"/>
++        <location filename="../src/server/room.cpp" line="3250"/>
+         <source>Server is not waiting for reply from %1</source>
+         <translation>服务器无法获取 %1 的响应</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="3250"/>
++        <location filename="../src/server/room.cpp" line="3252"/>
+         <source>Reply command should be %1 instead of %2</source>
+         <translation>应答指令应为 %1 而不是 %2</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="3253"/>
++        <location filename="../src/server/room.cpp" line="3255"/>
+         <source>Reply serial should be %1 instead of %2</source>
+         <translation>玩家序号应为 %1 而不是 %2</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="4674"/>
++        <location filename="../src/server/room.cpp" line="4676"/>
+         <source>Card cannot be parsed:
+  %1</source>
+         <translation>卡牌字符串无法解析:
+ %1</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/room.cpp" line="5952"/>
++        <location filename="../src/server/room.cpp" line="5954"/>
+         <source>&lt;font color=#EEB422&gt;The network delay of player &lt;b&gt;%1&lt;/b&gt; is %2 milliseconds.&lt;/font&gt;</source>
+         <translation>&lt;font color=#EEB422&gt;玩家 &lt;b&gt;%1&lt;/b&gt; 的网络延迟为 %2 毫秒&lt;/font&gt;</translation>
+     </message>
+@@ -3916,17 +3916,17 @@ P = 你自己, R = 你所在的房间</translation>
+ <context>
+     <name>Select3v3GeneralDialog</name>
+     <message>
+-        <location filename="../src/server/server.cpp" line="998"/>
++        <location filename="../src/server/server.cpp" line="1001"/>
+         <source>Select generals in extend 3v3 mode</source>
+         <translation>选择在扩展 3v3 模式中启用的武将</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1004"/>
++        <location filename="../src/server/server.cpp" line="1007"/>
+         <source>OK</source>
+         <translation>确定</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1056"/>
++        <location filename="../src/server/server.cpp" line="1059"/>
+         <source>Check/Uncheck all</source>
+         <translation>全部勾选或取消勾选</translation>
+     </message>
+@@ -3934,39 +3934,39 @@ P = 你自己, R = 你所在的房间</translation>
+ <context>
+     <name>Server</name>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1424"/>
+-        <location filename="../src/server/server.cpp" line="1431"/>
++        <location filename="../src/server/server.cpp" line="1427"/>
++        <location filename="../src/server/server.cpp" line="1434"/>
+         <source>Forbid the connection of address %1</source>
+         <translation>禁止了地址 %1 的连接</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1451"/>
++        <location filename="../src/server/server.cpp" line="1454"/>
+         <source>%1 connected</source>
+         <translation>%1 已连接</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1465"/>
++        <location filename="../src/server/server.cpp" line="1468"/>
+         <source>Invalid signup string: %1</source>
+         <translation>无效的登录字符串: %1</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1636"/>
++        <location filename="../src/server/server.cpp" line="1639"/>
+         <source>加入列表服务器失败 失败原因：外网无法访问此服务器。</source>
+         <translation>加入列表服务器失败 失败原因：外网无法访问此服务器。</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1648"/>
++        <location filename="../src/server/server.cpp" line="1651"/>
+         <source>加入“查找服务器”列表成功！</source>
+         <translation>加入“查找服务器”列表成功！</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1651"/>
+         <location filename="../src/server/server.cpp" line="1654"/>
++        <location filename="../src/server/server.cpp" line="1657"/>
+         <source>加入列表服务器失败 失败原因：列表服务器异常。</source>
+         <translation>加入列表服务器失败 失败原因：列表服务器异常。</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="1660"/>
++        <location filename="../src/server/server.cpp" line="1663"/>
+         <source>重新尝试 剩余次数 %1 次</source>
+         <translation>重新尝试 剩余次数 %1 次</translation>
+     </message>
+@@ -4159,12 +4159,12 @@ P = 你自己, R = 你所在的房间</translation>
+         <translation>自定义闯关模式</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="955"/>
++        <location filename="../src/server/server.cpp" line="958"/>
+         <source>PC Console Start</source>
+         <translation>单机启动</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="956"/>
++        <location filename="../src/server/server.cpp" line="959"/>
+         <source>Start Server</source>
+         <translation>启动服务器</translation>
+     </message>
+@@ -4431,7 +4431,7 @@ P = 你自己, R = 你所在的房间</translation>
+         <translation>启用 AI</translation>
+     </message>
+     <message>
+-        <location filename="../src/server/server.cpp" line="957"/>
++        <location filename="../src/server/server.cpp" line="960"/>
+         <source>Cancel</source>
+         <translation>取消</translation>
+     </message>
+diff --git a/help.txt b/help.txt
+new file mode 100644
+index 0000000..be99062
+--- /dev/null
++++ b/help.txt
+@@ -0,0 +1,6 @@
++find . -type f -name '*.png' -print0 | xargs -0 -P 4  mogrify ;
++
++
++./image/equips/
++
++ffmpeg -i *.ogg *.wav
+diff --git a/linux.mk b/linux.mk
+index fb6d357..ee788f8 100644
+--- a/linux.mk
++++ b/linux.mk
+@@ -37,10 +37,10 @@ swig/sanguosha_wrap.cxx: swig/ai.i swig/card.i swig/list.i swig/luaskills.i swig
+ 	cd swig && swig -c++ -lua sanguosha.i
+ 
+ $(BUILD)/Makefile: $(OLDPWD)/QSanguosha.pro
+-	cd $(BUILD) && qmake $(OLDPWD)/QSanguosha.pro "CONFIG+=release"
++	cd $(BUILD) && qmake-qt5 $(OLDPWD)/QSanguosha.pro "CONFIG+=release"
+ 
+ $(DEBUG_BUILD)/Makefile: $(OLDPWD)/QSanguosha.pro
+-	cd $(DEBUG_BUILD) && qmake $(OLDPWD)/QSanguosha.pro "CONFIG+=debug"
++	cd $(DEBUG_BUILD) && qmake-qt5 $(OLDPWD)/QSanguosha.pro "CONFIG+=debug"
+ 
+ $(BUILD)/swig/sanguosha_wrap.cxx: swig/sanguosha_wrap.cxx
+ 	mkdir -p $(BUILD)/swig
+@@ -50,7 +50,7 @@ $(DEBUG_BUILD)/swig/sanguosha_wrap.cxx: swig/sanguosha_wrap.cxx
+ 	mkdir -p $(DEBUG_BUILD)/swig
+ 	cp $(PWD)/swig/sanguosha_wrap.cxx $(DEBUG_BUILD)/swig/sanguosha_wrap.cxx
+ 
+-$(BUILD)/QSanguosha: $(BUILD)/libfmodex.so $(BUILD)/swig/sanguosha_wrap.cxx $(BUILD)/Makefile
++$(BUILD)/QSanguosha: $(BUILD)/swig/sanguosha_wrap.cxx $(BUILD)/Makefile
+ 	@echo "PWD is: $(OLDPWD)"
+ 	@ln -sf linux.mk Makefile
+ 	cd $(BUILD) && $(MAKE)
+@@ -63,30 +63,52 @@ $(DEBUG_BUILD)/QSanguosha: $(DEBUG_BUILD)/libfmodex.so $(DEBUG_BUILD)/swig/sangu
+ 	cd $(DEBUG_BUILD) && $(MAKE)
+ 	@rm -f QSanguosha
+ 
+-sanguosha.qm: $(BUILD)/QSanguosha sanguosha.ts
+-	lupdate QSanguosha.pro
+-	lrelease QSanguosha.pro
++sanguosha.qm: $(BUILD)/QSanguosha builds/sanguosha.ts
++	lupdate-qt5 QSanguosha.pro
++	lrelease-qt5 QSanguosha.pro
+ 	@echo "Well, compile done. Now you can run make install with root "
+ 
+ install: $(BUILD)/QSanguosha
+-	mkdir -p $(PREFIX)/games
+-	mkdir -p $(PREFIX)/share/QSanguosha
+-	rm -rf $(PREFIX)/share/QSanguosha/*
+-	install -s $(BUILD)/QSanguosha $(PREFIX)/games/QSanguosha
+-	cp -r acknowledgement $(PREFIX)/share/QSanguosha/.
+-	cp -r audio $(PREFIX)/share/QSanguosha/.
+-	cp -r backdrop $(PREFIX)/share/QSanguosha/.
+-	cp -r diy $(PREFIX)/share/QSanguosha/.
+-	cp -r etc $(PREFIX)/share/QSanguosha/.
+-	cp -r font $(PREFIX)/share/QSanguosha/.
+-	cp -r image $(PREFIX)/share/QSanguosha/.
+-	cp -r lang $(PREFIX)/share/QSanguosha/.
+-	cp -r lua $(PREFIX)/share/QSanguosha/.
+-	cp -r scenarios $(PREFIX)/share/QSanguosha/.
+-	cp -r skins $(PREFIX)/share/QSanguosha/.
+-	cp gpl-3.0.txt $(PREFIX)/share/QSanguosha/COPYING
+-	cp sanguosha.qm $(PREFIX)/share/QSanguosha/.
+-	cp sanguosha.qss $(PREFIX)/share/QSanguosha/.
++	mkdir -p $(BUILD)/dist
++	#mkdir -p $(PREFIX)/games
++	#mkdir -p $(PREFIX)/share/QSanguosha
++	#rm -rf $(PREFIX)/share/QSanguosha/*
++	install -s $(BUILD)/QSanguosha $(BUILD)/dist/QSanguosha
++	#cp -r acknowledgement $(PREFIX)/share/QSanguosha/.
++	cp -r audio $(BUILD)/dist/.
++	#cp -r backdrop $(PREFIX)/share/QSanguosha/.
++	cp -r diy $(BUILD)/dist/.
++	cp -r etc $(BUILD)/dist/.
++	cp -r font $(BUILD)/dist/.
++	#TEMP disable cp -r image $(BUILD)/dist/.
++	cp -r lang $(BUILD)/dist/.
++	cp -r lua $(BUILD)/dist/.
++	cp -r scenarios $(BUILD)/dist/.
++	cp -r skins $(BUILD)/dist/.
++	#cp gpl-3.0.txt $(PREFIX)/share/QSanguosha/COPYING
++	cp sanguosha.qm $(BUILD)/dist/.
++	cp -r qss $(BUILD)/dist/.
++
++debuginstall: $(DEBUG_BUILD)/QSanguosha
++	mkdir -p $(DEBUG_BUILD)/dist
++	#mkdir -p $(PREFIX)/games
++	#mkdir -p $(PREFIX)/share/QSanguosha
++	#rm -rf $(PREFIX)/share/QSanguosha/*
++	install -s $(DEBUG_BUILD)/QSanguosha $(DEBUG_BUILD)/dist/QSanguosha
++	#cp -r acknowledgement $(PREFIX)/share/QSanguosha/.
++	cp -r audio $(DEBUG_BUILD)/dist/.
++	#cp -r backdrop $(PREFIX)/share/QSanguosha/.
++	cp -r diy $(DEBUG_BUILD)/dist/.
++	cp -r etc $(DEBUG_BUILD)/dist/.
++	cp -r font $(DEBUG_BUILD)/dist/.
++	#TEMP disable cp -r image $(DEBUG_BUILD)/dist/.
++	cp -r lang $(DEBUG_BUILD)/dist/.
++	cp -r lua $(DEBUG_BUILD)/dist/.
++	cp -r scenarios $(DEBUG_BUILD)/dist/.
++	cp -r skins $(DEBUG_BUILD)/dist/.
++	#cp gpl-3.0.txt $(PREFIX)/share/QSanguosha/COPYING
++	cp sanguosha.qm $(DEBUG_BUILD)/dist/.
++	cp -r qss $(DEBUG_BUILD)/dist/.
+ 
+ clean:
+ 	-cd $(BUILD) && $(MAKE) clean
+diff --git a/src/core/audio.h b/src/core/audio.h
+index b701724..dfc19e6 100644
+--- a/src/core/audio.h
++++ b/src/core/audio.h
+@@ -17,6 +17,7 @@ public:
+     static void stopBGM();
+ 
+     static QString getVersion();
++
+ };
+ 
+ #endif
+diff --git a/src/core/audio_qt.cpp b/src/core/audio_qt.cpp
+new file mode 100644
+index 0000000..150e3c9
+--- /dev/null
++++ b/src/core/audio_qt.cpp
+@@ -0,0 +1,90 @@
++#include "audio.h"
++#include <QDebug>
++#include <QAudioOutput>
++#include <QMediaPlayer>
++#include <QSoundEffect>
++#include <QFile>
++#include <QUrl>
++#include <QFileInfo>
++
++    static QMediaPlayer* player;
++    static QAudioOutput* output;
++    static QSoundEffect* effect;
++
++    void Audio::init()
++    {
++        qWarning() << "Audio init";
++        player = new QMediaPlayer;
++        player->setVolume(100);
++        QAudioFormat format;
++        // Set up the format, eg.
++        format.setSampleRate(8000);
++        format.setChannelCount(1);
++        format.setSampleSize(8);
++        format.setCodec("audio/ogg");
++        format.setByteOrder(QAudioFormat::LittleEndian);
++        format.setSampleType(QAudioFormat::UnSignedInt);
++
++        output = new QAudioOutput(format);
++        effect = new QSoundEffect;
++    }
++
++    void Audio::play(const QString &filename, bool superpose)
++    {
++        qWarning() << "Audio play" << QUrl::fromLocalFile(QFileInfo(filename).absoluteFilePath());
++        effect->setSource(QUrl::fromLocalFile(QFileInfo(filename).absoluteFilePath()));
++        qWarning() << QSoundEffect::supportedMimeTypes();
++        qWarning() << "Audio play123" << filename;
++        effect->setLoopCount(1);
++        effect->play();
++        // player->setMedia(QUrl::fromLocalFile(QFileInfo(filename).absoluteFilePath()));
++        //player->play();
++    }
++
++    void Audio::quit(){
++        effect->stop();
++    }
++
++    void Audio::stop(){
++        effect->stop();
++    }
++
++    void handleStateChanged(QMediaPlayer::MediaStatus status) {
++        qWarning() << "media status " << status;
++        switch(status){
++            case QMediaPlayer::EndOfMedia:
++                player->play();
++        }
++    }
++
++
++    void Audio::playBGM(const QString &filename){
++        qWarning() << "Audio playBGM" << filename;
++        player->setMedia(QUrl::fromLocalFile(QFileInfo(filename).absoluteFilePath()));
++        QObject::connect(player, &QMediaPlayer::mediaStatusChanged, handleStateChanged);
++        //connect(player, SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),  SLOT(handleStateChanged(QMediaPlayer::MediaStatus)));
++        player->play();
++    }
++
++
++    void Audio::setBGMVolume(float volume)
++    {
++        qWarning() << "Audio setBGMVolume" << volume;
++        player->setVolume(volume*100);
++    }
++
++    void Audio::stopBGM()
++    {
++        player->stop();
++    }
++
++    QString Audio::getVersion()
++    {
++        return QString("Test");
++    }
++
++
++
++
++
++
+diff --git a/src/core/engine.cpp b/src/core/engine.cpp
+index 1bc62cb..7501829 100644
+--- a/src/core/engine.cpp
++++ b/src/core/engine.cpp
+@@ -1347,7 +1347,7 @@ QString Engine::getRandomGeneralName() const
+ 
+ void Engine::playSystemAudioEffect(const QString &name, bool superpose) const
+ {
+-    playAudioEffect(QString("audio/system/%1.ogg").arg(name), superpose);
++    playAudioEffect(QString("audio/system/%1.ogg.wav").arg(name), superpose);
+ }
+ 
+ void Engine::playAudioEffect(const QString &filename, bool superpose) const
+diff --git a/src/core/json.h b/src/core/json.h
+index 19463d6..ced9e91 100644
+--- a/src/core/json.h
++++ b/src/core/json.h
+@@ -79,7 +79,8 @@ namespace JsonUtils {
+     inline bool isNumber(const QVariant &var)
+     {
+         //three number types defined by JsonCPP
+-        return var.userType() == QMetaType::Double || var.userType() == QMetaType::Int || var.userType() == QMetaType::UInt;
++        int userType = var.userType();
++        return userType == QMetaType::Double || userType == QMetaType::Int || userType == QMetaType::UInt || userType == QMetaType::LongLong ||  userType == QMetaType::ULongLong ; //|| userType == QMetaType::Long || userType == QMetaType::LongLong  || userType == QMetaType::Short || userType == QMetaType::ULong ||  userType == QMetaType::ULongLong  || userType == QMetaType::UShort || userType == QMetaType::Float;
+     }
+ 
+     inline bool isString(const QVariant &var)
+diff --git a/src/dialog/mainwindow.cpp b/src/dialog/mainwindow.cpp
+index 763ba93..8e4ca02 100644
+--- a/src/dialog/mainwindow.cpp
++++ b/src/dialog/mainwindow.cpp
+@@ -927,4 +927,4 @@ void MainWindow::on_actionAbout_GPLv3_triggered()
+ QGraphicsScene* MainWindow::getScene()
+ {
+ 	return scene;
+-}
+\ No newline at end of file
++}
+diff --git a/src/package/standard-skillcards.cpp b/src/package/standard-skillcards.cpp
+index 2eb64d0..2188053 100644
+--- a/src/package/standard-skillcards.cpp
++++ b/src/package/standard-skillcards.cpp
+@@ -113,7 +113,7 @@ bool JieyinCard::targetFilter(const QList<const Player *> &targets, const Player
+     if (!targets.isEmpty())
+         return false;
+ 
+-    return to_select->isMale() && to_select->isWounded() && to_select != Self;
++    return to_select->isMale() && to_select->isWounded() ; //&& to_select != Self;
+ }
+ 
+ void JieyinCard::onEffect(const CardEffectStruct &effect) const
+diff --git a/src/pch.h b/src/pch.h
+index 23722ed..289ab63 100644
+--- a/src/pch.h
++++ b/src/pch.h
+@@ -17,7 +17,8 @@
+ #include <QtWidgets>
+ 
+ #ifndef Q_OS_WINRT
+-#include <QtDeclarative>
++//#include <QtDeclarative>
++#include <QtQml>
+ #endif
+ 
+ //#include <fmod.hpp>
+diff --git a/src/ui/roomscene.cpp b/src/ui/roomscene.cpp
+index d25dcbe..c9362d4 100644
+--- a/src/ui/roomscene.cpp
++++ b/src/ui/roomscene.cpp
+@@ -385,9 +385,9 @@ RoomScene::RoomScene(QMainWindow *main_window)
+ 
+ 
+ #ifndef Q_OS_WINRT
+-    _m_animationEngine = new QDeclarativeEngine(this);
+-    _m_animationContext = new QDeclarativeContext(_m_animationEngine->rootContext(), this);
+-    _m_animationComponent = new QDeclarativeComponent(_m_animationEngine, QUrl::fromLocalFile("ui-script/animation.qml"), this);
++    _m_animationEngine = new QQmlEngine(this);
++    _m_animationContext = new QQmlContext(_m_animationEngine->rootContext(), this);
++    _m_animationComponent = new QQmlComponent(_m_animationEngine, QUrl::fromLocalFile("ui-script/animation.qml"), this);
+ #endif
+ }
+ 
+diff --git a/src/ui/roomscene.h b/src/ui/roomscene.h
+index 6571da5..e43f673 100644
+--- a/src/ui/roomscene.h
++++ b/src/ui/roomscene.h
+@@ -37,9 +37,9 @@ class QSanSelectableItem;
+ class EffectAnimation;
+ 
+ #ifndef Q_OS_WINRT
+-#include <QDeclarativeEngine>
+-#include <QDeclarativeContext>
+-#include <QDeclarativeComponent>
++#include <QQmlEngine>
++#include <QQmlContext>
++#include <QQmlComponent>
+ #endif
+ 
+ class ScriptExecutor : public QDialog
+@@ -382,9 +382,9 @@ private:
+ 
+ #ifndef Q_OS_WINRT
+     // for animation effects
+-    QDeclarativeEngine *_m_animationEngine;
+-    QDeclarativeContext *_m_animationContext;
+-    QDeclarativeComponent *_m_animationComponent;
++    QQmlEngine *_m_animationEngine;
++    QQmlContext *_m_animationContext;
++    QQmlComponent *_m_animationComponent;
+ #endif
+ 
+ private slots:
+diff --git a/src/ui/skin-bank.cpp b/src/ui/skin-bank.cpp
+index c2eb4ac..df3134b 100644
+--- a/src/ui/skin-bank.cpp
++++ b/src/ui/skin-bank.cpp
+@@ -590,6 +590,7 @@ QString IQSanComponentSkin::_readImageConfig(const QString &key, QRect &rect,
+                 scaled = true;
+         }
+     } else {
++        qWarning("Here????");
+         qWarning("Unable to read configuration: %s", key.toLatin1().constData());
+         return defaultValue;
+     }
+@@ -612,14 +613,19 @@ QPixmap IQSanComponentSkin::getPixmap(const QString &key, const QString &arg, bo
+ 
+     // case 1 and 2
+     if (arg.isNull()) totalKey = key; else totalKey = key.arg(arg);
++    //qWarning() << "Total key:" << totalKey << "\tkey:" << key << "\targ: " << arg;
+     if (isImageKeyDefined(totalKey)) { // read from config file
+         fileName = _readImageConfig(totalKey, clipRegion, clipping, scaleRegion, scaled);
+     } else { // case 3: use default
+         Q_ASSERT(!arg.isNull());
+         groupKey = key.arg(S_SKIN_KEY_DEFAULT);
++        if (!groupKey.contains("handCard"))
++            qWarning() << "groupKey key:" << groupKey << "\tkey:" << key <<"\targ" << arg;
+         QString fileNameToResolve = _readImageConfig(groupKey, clipRegion, clipping, scaleRegion, scaled);
+         fileName = fileNameToResolve.arg(arg);
++
+         if (!QFile::exists(fileName)) {
++            qWarning() << "filename not exists :" << fileName;
+             groupKey = key.arg(S_SKIN_KEY_DEFAULT_SECOND);
+             QString fileNameToResolve = _readImageConfig(groupKey, clipRegion, clipping, scaleRegion, scaled);
+             fileName = fileNameToResolve.arg(arg);

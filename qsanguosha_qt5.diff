@@ -1,0 +1,150 @@
+diff --git a/NOTE.txt b/NOTE.txt
+new file mode 100644
+index 0000000..92b99cb
+--- /dev/null
++++ b/NOTE.txt
+@@ -0,0 +1 @@
++libfmodexL.so is required to build under linux . You can get it via git history commit. It is deleted due to license issue.
+diff --git a/QSanguosha.pro b/QSanguosha.pro
+index ab2b4c3..0c4acf8 100644
+--- a/QSanguosha.pro
++++ b/QSanguosha.pro
+@@ -3,7 +3,7 @@
+ # -------------------------------------------------
+ TARGET = QSanguosha
+ QT += network widgets sql
+-!winrt:QT += declarative
++!winrt:QT += qml #declarative
+ android:QT += androidextras
+ TEMPLATE = app
+ CONFIG += audio
+@@ -364,7 +364,7 @@ linux{
+             src/breakpad/client/linux/handler/exception_handler.h
+ 
+         QMAKE_CXXFLAGS += -g
+-        DEFINES += USE_BREAKPAD
++        #DEFINES += USE_BREAKPAD
+         INCLUDEPATH += src/breakpad
+     }
+ 
+@@ -544,7 +544,7 @@ CONFIG(opengl){
+ TRANSLATIONS += builds/sanguosha.ts
+ 
+ !build_pass{
+-    system("lrelease builds/sanguosha.ts -qm $$PWD/sanguosha.qm")
++    system("lrelease-qt5 builds/sanguosha.ts -qm $$PWD/sanguosha.qm")
+ 
+     SWIG_bin = "swig"
+     win32: SWIG_bin = "$$PWD/tools/swig/swig.exe"
+diff --git a/linux.mk b/linux.mk
+index 3847af1..cf50dcf 100644
+--- a/linux.mk
++++ b/linux.mk
+@@ -37,10 +37,10 @@ swig/sanguosha_wrap.cxx: swig/ai.i swig/card.i swig/list.i swig/luaskills.i swig
+ 	cd swig && swig -c++ -lua sanguosha.i
+ 
+ $(BUILD)/Makefile: $(OLDPWD)/QSanguosha.pro
+-	cd $(BUILD) && qmake $(OLDPWD)/QSanguosha.pro "CONFIG+=release"
++	cd $(BUILD) && qmake-qt5 $(OLDPWD)/QSanguosha.pro "CONFIG+=release"
+ 
+ $(DEBUG_BUILD)/Makefile: $(OLDPWD)/QSanguosha.pro
+-	cd $(DEBUG_BUILD) && qmake $(OLDPWD)/QSanguosha.pro "CONFIG+=debug"
++	cd $(DEBUG_BUILD) && qmake-qt5 $(OLDPWD)/QSanguosha.pro "CONFIG+=debug"
+ 
+ $(BUILD)/swig/sanguosha_wrap.cxx: swig/sanguosha_wrap.cxx
+ 	mkdir -p $(BUILD)/swig
+@@ -64,8 +64,8 @@ $(DEBUG_BUILD)/QSanguosha: $(DEBUG_BUILD)/libfmodex.so $(DEBUG_BUILD)/swig/sangu
+ 	@rm -f QSanguosha
+ 
+ sanguosha.qm: $(BUILD)/QSanguosha sanguosha.ts
+-	lupdate QSanguosha.pro
+-	lrelease QSanguosha.pro
++	lupdate-qt5 QSanguosha.pro
++	lrelease-qt5 QSanguosha.pro
+ 	@cp builds/vs2010/sanguosha.qm sanguosha.qm
+ 	@echo "Well, compile done. Now you can run make install with root "
+ 
+diff --git a/src/core/json.h b/src/core/json.h
+index cd78dbc..0b48e98 100644
+--- a/src/core/json.h
++++ b/src/core/json.h
+@@ -59,7 +59,8 @@ namespace JsonUtils{
+ 
+     inline bool isNumber(const QVariant &var) {
+         //three number types defined by JsonCPP
+-        return var.userType() == QMetaType::Double || var.userType() == QMetaType::Int || var.userType() == QMetaType::UInt;
++        int userType = var.userType();
++        return userType == QMetaType::Double || userType == QMetaType::Int || userType == QMetaType::UInt || userType == QMetaType::LongLong ||  userType == QMetaType::ULongLong ;
+     }
+ 
+     inline bool isString(const QVariant &var) {
+diff --git a/src/dialog/generaloverview.h b/src/dialog/generaloverview.h
+index 43e8af9..7b55423 100644
+--- a/src/dialog/generaloverview.h
++++ b/src/dialog/generaloverview.h
+@@ -24,12 +24,13 @@
+ #include "flatdialog.h"
+ #include <QModelIndex>
+ 
+-class QCheckBox;
+-class QLineEdit;
+-class QButtonGroup;
+-class QSpinBox;
++#include <QCheckBox>
++#include <QLineEdit>
++#include <QButtonGroup>
++#include <QSpinBox>
++#include <QAction>
+ class General;
+-class QCommandLinkButton;
++#include <QCommandLinkButton>
+ class Skill;
+ class GeneralOverview;
+ struct SearchDetails;
+diff --git a/src/ui/roomscene.cpp b/src/ui/roomscene.cpp
+index eb7ff86..47e5ffd 100644
+--- a/src/ui/roomscene.cpp
++++ b/src/ui/roomscene.cpp
+@@ -385,9 +385,9 @@ RoomScene::RoomScene(QMainWindow *main_window)
+     pindian_from_card = NULL;
+     pindian_to_card = NULL;
+ #ifndef Q_OS_WINRT
+-    _m_animationEngine = new QDeclarativeEngine(this);
+-    _m_animationContext = new QDeclarativeContext(_m_animationEngine->rootContext(), this);
+-    _m_animationComponent = new QDeclarativeComponent(_m_animationEngine, QUrl::fromLocalFile("ui-script/animation.qml"), this);
++    _m_animationEngine = new QQmlEngine(this);
++    _m_animationContext = new QQmlContext(_m_animationEngine->rootContext(), this);
++    _m_animationComponent = new QQmlComponent(_m_animationEngine, QUrl::fromLocalFile("ui-script/animation.qml"), this);
+ #endif
+ }
+ 
+diff --git a/src/ui/roomscene.h b/src/ui/roomscene.h
+index 6355ed8..37221fc 100644
+--- a/src/ui/roomscene.h
++++ b/src/ui/roomscene.h
+@@ -60,9 +60,9 @@ struct RoomLayout;
+ #include <QMutex>
+ #include <QStack>
+ #ifndef Q_OS_WINRT
+-#include <QDeclarativeEngine>
+-#include <QDeclarativeContext>
+-#include <QDeclarativeComponent>
++#include <QQmlEngine>
++#include <QQmlContext>
++#include <QQmlComponent>
+ #endif
+ class ScriptExecutor : public QDialog {
+     Q_OBJECT
+@@ -368,9 +368,9 @@ private:
+ 
+ #ifndef Q_OS_WINRT
+     // for animation effects
+-    QDeclarativeEngine *_m_animationEngine;
+-    QDeclarativeContext *_m_animationContext;
+-    QDeclarativeComponent *_m_animationComponent;
++    QQmlEngine *_m_animationEngine;
++    QQmlContext *_m_animationContext;
++    QQmlComponent *_m_animationComponent;
+ #endif
+ 
+     QSet<HeroSkinContainer *> m_heroSkinContainers;
