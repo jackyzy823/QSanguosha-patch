@@ -1,0 +1,18 @@
+1. dnf install swig make qt5-qtbase-devel qt5-linguist  qt5-qtdeclarative-devel freetype-devel
+1.5 copy libfmodex.so from qsanguosha/lib/linux/x64
+2. edit QSanguosha.pro remove qtdecla -> add qml
+2.1 edit QSanguosha.pro  lrelease -> lrelease-qt5
+3. edit pch.h
+4. edit all QDeclartive -> QQml
+5 edit linux.mk qmake -> qmake-qt5
+6 linux.mk  sanguosha.qm: $(BUILD)/QSanguosha sanguosha.ts -> sanguosha.qm: $(BUILD)/QSanguosha builds/sanguosha.ts
+7 install comment ack drop gpl , edit sanguosha.qss -> qss/sanguosha.qss
+replace deprected func
+
+JSON isNumber
+
+TODO:
+Qt libs -> rpath
+
+RUNTIME:
+1.  qt5-qtdeclarative ( qt-qtbase-gui (qt-qtbase) pcre2-utf16 )
